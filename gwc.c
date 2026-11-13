@@ -13,20 +13,21 @@ int count(FILE *file) {
 
 int main(int argc, char *argv[]) {
   int EXIT_CODE = 0;
-  int COUNT = 0;
+  int COUNT;
 
   if (argc > 1) {
     FILE *f;
     char *fname;
 
     for (int j = 1; j < argc; j++) {
-      fname = argv[1];
+      COUNT = 0;
+      fname = argv[j];
       f = fopen(fname, "r");
 
       if (f == NULL) {
         perror(fname);
         EXIT_CODE = 1;
-        break;
+        continue;
       }
 
       if ((COUNT = count(f)) == -1) {
@@ -38,9 +39,11 @@ int main(int argc, char *argv[]) {
         perror(fname);
         EXIT_CODE = 1;
       };
-    }
 
-    printf("%d", COUNT);
+      if (COUNT != -1) {
+        printf("%d %s\n", COUNT, fname);
+      }
+    }
   }
 
   return EXIT_CODE;
