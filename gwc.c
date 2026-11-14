@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include "g.h"
 
 int count(FILE *file) {
   int c = 0;
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
       };
 
       if (COUNT != -1 && fileError == 0) {
-        printf("%d %s\n", COUNT, fname);
+        p("%d %s\n", COUNT, fname);
       }
     }
   }
