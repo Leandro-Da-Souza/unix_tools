@@ -18,9 +18,11 @@ int main(int argc, char *argv[]) {
   if (argc > 1) {
     FILE *f;
     char *fname;
+    int fileError;
 
     for (int j = 1; j < argc; j++) {
       COUNT = 0;
+      fileError = 0;
       fname = argv[j];
       f = fopen(fname, "r");
 
@@ -33,14 +35,16 @@ int main(int argc, char *argv[]) {
       if ((COUNT = count(f)) == -1) {
         perror(fname);
         EXIT_CODE = 1;
+        fileError = 1;
       };
 
       if (fclose(f) != 0) {
         perror(fname);
         EXIT_CODE = 1;
+        fileError = 1;
       };
 
-      if (COUNT != -1) {
+      if (COUNT != -1 && fileError == 0) {
         printf("%d %s\n", COUNT, fname);
       }
     }
