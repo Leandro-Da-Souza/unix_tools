@@ -1,5 +1,4 @@
 #include "G_H.h"
-#include <stdio.h>
 
 int EXIT_CODE;
 
@@ -11,19 +10,38 @@ typedef struct {
 
 typedef struct {
   int size;
-  int capacity;
   char **items;
 } Files;
 
-int count(FILE *file) {
-  int c = 0;
-  while (fgetc(file) != EOF) {
-    c++;
+typedef struct {
+  size_t bytes;
+  size_t words;
+  size_t lines;
+} Count;
+
+bool count(FILE *file, Count *c, Flags flag) {
+  int i;
+  bool insideWord = false;
+
+  while ((i = fgetc(file)) != EOF) {
+    if (flag.COUNT_BYTES)
+      c->bytes++;
+    if (flag.COUNT_LINES)
+      if (i == '\n')
+        c->lines++;
+    if (flag.COUNT_WORDS) {
+      if (!isspace(i) && !insideWord) {
+        insideWord = true;
+        c->words++;
+      } else if (isspace(i) && insideWord) {
+        insideWord = false;
+      }
+    }
   }
 
   if (ferror(file))
-    return -1;
-  return c;
+    return false;
+  return true;
 }
 
 void parse(int argc, char *argv[], Flags *flags, Files *files) {
@@ -55,21 +73,25 @@ int main(int argc, char *argv[]) {
     FILE *f;
     char *fname;
     int fileError;
-    int COUNT;
 
     Flags flags = {false, false, false};
-    Files files = {0, (argc - 1), malloc((argc - 1) * sizeof(*files.items))};
+    Files files = {0, malloc((argc - 1) * sizeof(*files.items))};
 
     if (files.items == NULL) {
-      printf("Failed to allocate memory, exiting.\n");
+      fp("Failed to allocate memory, exiting.\n");
       EXIT_CODE = 1;
       goto exit;
     }
 
     parse(argc, argv, &flags, &files);
 
+    if (!flags.COUNT_BYTES && !flags.COUNT_WORDS && !flags.COUNT_LINES) {
+      /* all are false then switch them to true to print EVERYTHING*/
+      flags = (Flags){true, true, true};
+    }
     for (int j = 0; j < files.size; j++) {
-      COUNT = 0;
+
+      Count result = {0, 0, 0};
       fileError = 0;
       fname = files.items[j];
       f = fopen(fname, "r");
@@ -80,7 +102,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      if ((COUNT = count(f)) == -1) {
+      if (count(f, &result, flags) == false) {
         perror(fname);
         EXIT_CODE = 1;
         fileError = 1;
@@ -92,8 +114,17 @@ int main(int argc, char *argv[]) {
         fileError = 1;
       };
 
-      if (COUNT != -1 && fileError == 0) {
-        p("%d %s\n", COUNT, fname);
+      if (fileError == 0) {
+        p("%s\n", fname);
+
+        if (flags.COUNT_BYTES)
+          p("bytes: %zu\n", result.bytes);
+
+        if (flags.COUNT_WORDS)
+          p("words: %zu\n", result.words);
+
+        if (flags.COUNT_LINES)
+          p("lines: %zu\n", result.lines);
       }
     }
 
