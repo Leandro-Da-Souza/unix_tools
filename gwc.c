@@ -66,71 +66,85 @@ void parse(int argc, char *argv[], Flags *flags, Files *files) {
   }
 }
 
+void printResult(Count *result, Flags flags, char name[]) {
+  p("%s\n", name);
+
+  if (flags.COUNT_BYTES)
+    p("bytes: %zu\n", result->bytes);
+
+  if (flags.COUNT_WORDS)
+    p("words: %zu\n", result->words);
+
+  if (flags.COUNT_LINES)
+    p("lines: %zu\n", result->lines);
+}
+
 int main(int argc, char *argv[]) {
   EXIT_CODE = 0;
+  FILE *f;
+  char *fname;
+  int fileError;
+  Count result = {0, 0, 0};
+  Flags flags = {false, false, false};
+  Files files = {0,
+                 (argc == 1 ? 0 : malloc((argc - 1) * sizeof(*files.items)))};
 
-  if (argc > 1) {
-    FILE *f;
-    char *fname;
-    int fileError;
+  if (argc > 1 && files.items == NULL) {
+    fp("Failed to allocate memory, exiting.\n");
+    EXIT_CODE = 1;
+    goto exit;
+  }
 
-    Flags flags = {false, false, false};
-    Files files = {0, malloc((argc - 1) * sizeof(*files.items))};
+  parse(argc, argv, &flags, &files);
 
-    if (files.items == NULL) {
-      fp("Failed to allocate memory, exiting.\n");
+  if (!flags.COUNT_BYTES && !flags.COUNT_WORDS && !flags.COUNT_LINES) {
+    /* all are false then switch them to true to print EVERYTHING*/
+    flags = (Flags){true, true, true};
+  }
+
+  if (files.size == 0) {
+    // read stdin if no files have been parsed then exit
+    if (count(stdin, &result, flags) == false) {
+      perror("stdin");
       EXIT_CODE = 1;
       goto exit;
+    } else {
+      printResult(&result, flags, "stdin");
+    };
+
+    goto exit;
+  }
+
+  for (int j = 0; j < files.size; j++) {
+    result = (Count){0, 0, 0};
+    fileError = 0;
+    fname = files.items[j];
+    f = fopen(fname, "r");
+
+    if (f == NULL) {
+      perror(fname);
+      EXIT_CODE = 1;
+      continue;
     }
 
-    parse(argc, argv, &flags, &files);
+    if (count(f, &result, flags) == false) {
+      perror(fname);
+      EXIT_CODE = 1;
+      fileError = 1;
+    };
 
-    if (!flags.COUNT_BYTES && !flags.COUNT_WORDS && !flags.COUNT_LINES) {
-      /* all are false then switch them to true to print EVERYTHING*/
-      flags = (Flags){true, true, true};
+    if (fclose(f) != 0) {
+      perror(fname);
+      EXIT_CODE = 1;
+      fileError = 1;
+    };
+
+    if (fileError == 0) {
+      printResult(&result, flags, fname);
     }
-    for (int j = 0; j < files.size; j++) {
-
-      Count result = {0, 0, 0};
-      fileError = 0;
-      fname = files.items[j];
-      f = fopen(fname, "r");
-
-      if (f == NULL) {
-        perror(fname);
-        EXIT_CODE = 1;
-        continue;
-      }
-
-      if (count(f, &result, flags) == false) {
-        perror(fname);
-        EXIT_CODE = 1;
-        fileError = 1;
-      };
-
-      if (fclose(f) != 0) {
-        perror(fname);
-        EXIT_CODE = 1;
-        fileError = 1;
-      };
-
-      if (fileError == 0) {
-        p("%s\n", fname);
-
-        if (flags.COUNT_BYTES)
-          p("bytes: %zu\n", result.bytes);
-
-        if (flags.COUNT_WORDS)
-          p("words: %zu\n", result.words);
-
-        if (flags.COUNT_LINES)
-          p("lines: %zu\n", result.lines);
-      }
-    }
-
-    free(files.items);
   }
 
 exit:
+  free(files.items);
   return EXIT_CODE;
 }
