@@ -11,21 +11,22 @@ int main(int argc, char *argv[]) {
   char *fname = argv[1];
   FILE *fstream = fopen(fname, "r");
   char *line = NULL;
-  size_t size;
+  size_t size = 0;
   ssize_t nread;
 
   if (fstream == NULL) {
     perror("File could not be opened.\n");
     EXIT_STATUS = EXIT_FAILURE;
+    goto exit;
   }
 
-  while ((nread = getline(&line, &size, fstream) != -1)) {
+  while ((nread = getline(&line, &size, fstream)) != -1) {
     p("%s", line);
     p("%zu\n", nread);
     p("%zu\n", size);
   }
 
 exit:
-  p("");
+  free(line);
   return EXIT_STATUS;
 }
