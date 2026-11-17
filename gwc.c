@@ -1,4 +1,5 @@
 #include "G_H.h"
+#include <stdio.h>
 
 int EXIT_CODE;
 
@@ -44,26 +45,49 @@ bool count(FILE *file, Count *c, Flags flag) {
   return true;
 }
 
-void parse(int argc, char *argv[], Flags *flags, Files *files) {
+bool parse(int argc, char *argv[], Flags *flags, Files *files) {
   for (int j = 1; j < argc; j++) {
-    if (strcmp(argv[j], "-c") == 0) {
-      flags->COUNT_BYTES = true;
-      continue;
+    // check for arguments, otherwise we are checking files
+    if (argv[j][0] == '-' && argv[j][1] != '\0') {
+      // long options aka --lines, --bytes etc
+      if (argv[j][1] == '-') {
+        if (strcmp(argv[j], "--bytes") == 0) {
+          flags->COUNT_BYTES = true;
+          continue;
+        } else if (strcmp(argv[j], "--words") == 0) {
+          flags->COUNT_WORDS = true;
+          continue;
+        } else if (strcmp(argv[j], "--lines") == 0) {
+          flags->COUNT_LINES = true;
+          continue;
+        } else {
+          fp("no valid option. \n");
+          return false;
+        }
+      } else {
+        // short options and combined flags
+        for (int k = 1; argv[j][k] != '\0'; k++) {
+          if (argv[j][k] == 'c') {
+            flags->COUNT_BYTES = true;
+            continue;
+          } else if (argv[j][k] == 'w') {
+            flags->COUNT_WORDS = true;
+            continue;
+          } else if (argv[j][k] == 'l') {
+            flags->COUNT_LINES = true;
+            continue;
+          } else {
+            fp("No valid option.\n");
+            return false;
+          }
+        }
+      }
+    } else {
+      files->items[files->size] = argv[j];
+      files->size++;
     }
-
-    if (strcmp(argv[j], "-w") == 0) {
-      flags->COUNT_WORDS = true;
-      continue;
-    }
-
-    if (strcmp(argv[j], "-l") == 0) {
-      flags->COUNT_LINES = true;
-      continue;
-    }
-
-    files->items[files->size] = argv[j];
-    files->size++;
   }
+  return true;
 }
 
 void printResult(Count *result, Flags flags, char name[]) {
@@ -95,7 +119,11 @@ int main(int argc, char *argv[]) {
     goto exit;
   }
 
-  parse(argc, argv, &flags, &files);
+  if (!parse(argc, argv, &flags, &files)) {
+    fp("Failed to parse files | arguments. \n");
+    EXIT_CODE = 1;
+    goto exit;
+  };
 
   if (!flags.COUNT_BYTES && !flags.COUNT_WORDS && !flags.COUNT_LINES) {
     /* all are false then switch them to true to print EVERYTHING*/
@@ -111,7 +139,6 @@ int main(int argc, char *argv[]) {
     } else {
       printResult(&result, flags, "stdin");
     };
-
     goto exit;
   }
 
@@ -119,7 +146,11 @@ int main(int argc, char *argv[]) {
     result = (Count){0, 0, 0};
     fileError = 0;
     fname = files.items[j];
-    f = fopen(fname, "r");
+    if (strcmp(fname, "-") == 0) {
+      f = stdin;
+    } else {
+      f = fopen(fname, "r");
+    }
 
     if (f == NULL) {
       perror(fname);
@@ -133,11 +164,13 @@ int main(int argc, char *argv[]) {
       fileError = 1;
     };
 
-    if (fclose(f) != 0) {
-      perror(fname);
-      EXIT_CODE = 1;
-      fileError = 1;
-    };
+    if (f != stdin) {
+      if (fclose(f) != 0) {
+        perror(fname);
+        EXIT_CODE = 1;
+        fileError = 1;
+      };
+    }
 
     if (fileError == 0) {
       printResult(&result, flags, fname);
