@@ -1,4 +1,6 @@
 #include "G_H.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef struct {
@@ -32,6 +34,10 @@ bool parse(int argc, char *argv[], Arguments *gArgs) {
     gArgs->size++;
   }
 
+  if (gArgs->pattern == NULL) {
+    return false;
+  }
+
   return true;
 }
 
@@ -46,6 +52,12 @@ int main(int argc, char *argv[]) {
 
   Arguments gArgs = {
       0, {false}, NULL, malloc((argc - 1) * sizeof *gArgs.files)};
+
+  if (parse(argc, argv, &gArgs) == false) {
+    EXIT_STATUS = EXIT_FAILURE;
+    goto exit;
+  }
+
   FILE *fstream = fopen(*gArgs.files, "r");
   char *line = NULL;
   size_t memsize = 0;
@@ -64,6 +76,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  if (fclose(fstream) != 0) {
+    perror("File could not be closed");
+    EXIT_STATUS = EXIT_FAILURE;
+    goto exit;
+  }
 exit:
   free(line);
   free(gArgs.files);
