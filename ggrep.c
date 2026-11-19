@@ -1,7 +1,5 @@
 #include "G_H.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stdbool.h>
 
 typedef struct {
   bool CASE_INSENSITIVE;
@@ -45,6 +43,47 @@ bool parse(int argc, char *argv[], Arguments *gArgs) {
   return true;
 }
 
+bool readAndWrite(Arguments *gArgs) {
+  char *line = NULL;
+  size_t memsize = 0;
+  ssize_t bytesread;
+  bool fileError = false;
+
+  for (int i = 0; i < gArgs->size; i++) {
+    FILE *fstream = fopen(gArgs->files[i], "r");
+
+    if (fstream == NULL) {
+      perror("File could not be opened.\n");
+      fileError = true;
+      continue;
+    }
+
+    while ((bytesread = getline(&line, &memsize, fstream)) != -1) {
+      if (gArgs->flags.CASE_INSENSITIVE) {
+        line
+      }
+      if (strstr(line, gArgs->pattern)) {
+        p("[%s] %s", gArgs->files[i], line);
+      }
+    }
+
+    if (ferror(fstream)) {
+      perror("Failed to read file");
+      fileError = true;
+    }
+
+    if (fclose(fstream) != 0) {
+      perror("File could not be closed");
+      fileError = true;
+      continue;
+    }
+  }
+
+  free(line);
+
+  return !fileError;
+}
+
 int main(int argc, char *argv[]) {
   int EXIT_STATUS = EXIT_SUCCESS;
 
@@ -56,9 +95,6 @@ int main(int argc, char *argv[]) {
 
   Arguments gArgs = {
       0, {false}, NULL, malloc((argc - 1) * sizeof *gArgs.files)};
-  char *line = NULL;
-  size_t memsize = 0;
-  ssize_t bytesread;
 
   if (gArgs.files == NULL) {
     EXIT_STATUS = EXIT_FAILURE;
@@ -67,36 +103,14 @@ int main(int argc, char *argv[]) {
 
   if (parse(argc, argv, &gArgs) == false) {
     EXIT_STATUS = EXIT_FAILURE;
-    goto cleanup_files;
+    goto cleanup;
   }
 
-  FILE *fstream = fopen(*gArgs.files, "r");
-
-  if (fstream == NULL) {
-    perror("File could not be opened.\n");
+  if (readAndWrite(&gArgs) == false) {
     EXIT_STATUS = EXIT_FAILURE;
-    goto cleanup_files;
-  }
+  };
 
-  while ((bytesread = getline(&line, &memsize, fstream)) != -1) {
-    if (strstr(line, gArgs.pattern)) {
-      p("found search \"%s\" in \"%s\" from %s\n", gArgs.pattern, line,
-        *gArgs.files);
-    }
-  }
-
-  if (ferror(fstream)) {
-    perror("Failed to read file");
-    EXIT_STATUS = EXIT_FAILURE;
-  }
-
-  if (fclose(fstream) != 0) {
-    perror("File could not be closed");
-    EXIT_STATUS = EXIT_FAILURE;
-  }
-
-  free(line);
-cleanup_files:
+cleanup:
   free(gArgs.files);
 quit:
   return EXIT_STATUS;
