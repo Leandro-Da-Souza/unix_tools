@@ -43,11 +43,37 @@ bool parse(int argc, char *argv[], Arguments *gArgs) {
   return true;
 }
 
+char *toLowercase(char *str) {
+  size_t i = 0;
+  char *lower = malloc((strlen(str) + 1));
+
+  if (lower == NULL) {
+    return NULL;
+  }
+
+  while (true) {
+    lower[i] = tolower((unsigned char)str[i]);
+    if (str[i] == '\0')
+      break;
+    i++;
+  }
+
+  return lower;
+}
+
 bool readAndWrite(Arguments *gArgs) {
   char *line = NULL;
   size_t memsize = 0;
   ssize_t bytesread;
   bool fileError = false;
+  char *lowerPattern = NULL;
+
+  if (gArgs->flags.CASE_INSENSITIVE) {
+    lowerPattern = toLowercase(gArgs->pattern);
+    if (lowerPattern == NULL) {
+      return false;
+    }
+  }
 
   for (int i = 0; i < gArgs->size; i++) {
     FILE *fstream = fopen(gArgs->files[i], "r");
@@ -59,11 +85,21 @@ bool readAndWrite(Arguments *gArgs) {
     }
 
     while ((bytesread = getline(&line, &memsize, fstream)) != -1) {
-      if (gArgs->flags.CASE_INSENSITIVE) {
-        line
-      }
-      if (strstr(line, gArgs->pattern)) {
-        p("[%s] %s", gArgs->files[i], line);
+      if (gArgs->flags.CASE_INSENSITIVE && lowerPattern != NULL) {
+        char *lowerLine = toLowercase(line);
+        if (lowerLine == NULL) {
+          fp("Could not read line, exiting.\n");
+          fileError = true;
+          break;
+        }
+        if (strstr(lowerLine, lowerPattern)) {
+          p("[%s] %s", gArgs->files[i], line);
+        }
+        free(lowerLine);
+      } else {
+        if (strstr(line, gArgs->pattern)) {
+          p("[%s] %s", gArgs->files[i], line);
+        }
       }
     }
 
@@ -80,6 +116,7 @@ bool readAndWrite(Arguments *gArgs) {
   }
 
   free(line);
+  free(lowerPattern);
 
   return !fileError;
 }
