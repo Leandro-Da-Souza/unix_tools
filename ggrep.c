@@ -3,6 +3,7 @@
 
 typedef struct {
   bool CASE_INSENSITIVE;
+  bool LINE_NUMBERS;
 } Flags;
 
 typedef struct {
@@ -17,6 +18,8 @@ bool parse(int argc, char *argv[], Arguments *gArgs) {
     if (argv[i][0] == '-') {
       if (strcmp(argv[i], "-i") == 0) {
         gArgs->flags.CASE_INSENSITIVE = true;
+      } else if (strcmp(argv[i], "-n") == 0) {
+        gArgs->flags.LINE_NUMBERS = true;
       } else {
         return false;
       }
@@ -76,6 +79,7 @@ bool readAndWrite(Arguments *gArgs) {
   }
 
   for (int i = 0; i < gArgs->size; i++) {
+    int lineCount = 0;
     FILE *fstream = fopen(gArgs->files[i], "r");
 
     if (fstream == NULL) {
@@ -85,20 +89,31 @@ bool readAndWrite(Arguments *gArgs) {
     }
 
     while ((bytesread = getline(&line, &memsize, fstream)) != -1) {
+      if (gArgs->flags.LINE_NUMBERS)
+        lineCount++;
+
       if (gArgs->flags.CASE_INSENSITIVE && lowerPattern != NULL) {
         char *lowerLine = toLowercase(line);
         if (lowerLine == NULL) {
-          fp("Could not read line, exiting.\n");
+          fp("Could not allocate line memory, exiting.\n");
           fileError = true;
           break;
         }
         if (strstr(lowerLine, lowerPattern)) {
-          p("[%s] %s", gArgs->files[i], line);
+          if (gArgs->flags.LINE_NUMBERS) {
+            p("[%s:%d] %s", gArgs->files[i], lineCount, line);
+          } else {
+            p("[%s] %s", gArgs->files[i], line);
+          }
         }
         free(lowerLine);
       } else {
         if (strstr(line, gArgs->pattern)) {
-          p("[%s] %s", gArgs->files[i], line);
+          if (gArgs->flags.LINE_NUMBERS) {
+            p("[%s:%d] %s", gArgs->files[i], lineCount, line);
+          } else {
+            p("[%s] %s", gArgs->files[i], line);
+          }
         }
       }
     }
@@ -131,7 +146,7 @@ int main(int argc, char *argv[]) {
   }
 
   Arguments gArgs = {
-      0, {false}, NULL, malloc((argc - 1) * sizeof *gArgs.files)};
+      0, {false, false}, NULL, malloc((argc - 1) * sizeof *gArgs.files)};
 
   if (gArgs.files == NULL) {
     EXIT_STATUS = EXIT_FAILURE;
