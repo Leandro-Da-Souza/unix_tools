@@ -41,10 +41,6 @@ bool parse(int argc, char *argv[], Arguments *gArgs) {
     return false;
   }
 
-  if (gArgs->size == 0) {
-    return false;
-  }
-
   return true;
 }
 
@@ -82,7 +78,13 @@ bool readAndWrite(Arguments *gArgs) {
 
   for (int i = 0; i < gArgs->size; i++) {
     int lineCount = 0;
-    FILE *fstream = fopen(gArgs->files[i], "r");
+    FILE *fstream;
+
+    if (strcmp(gArgs->files[i], "-") == 0) {
+      fstream = stdin;
+    } else {
+      fstream = fopen(gArgs->files[i], "r");
+    }
 
     if (fstream == NULL) {
       perror("File could not be opened.\n");
@@ -125,7 +127,7 @@ bool readAndWrite(Arguments *gArgs) {
       fileError = true;
     }
 
-    if (fclose(fstream) != 0) {
+    if (fstream != stdin && fclose(fstream) != 0) {
       perror("File could not be closed");
       fileError = true;
       continue;
@@ -158,6 +160,11 @@ int main(int argc, char *argv[]) {
   if (parse(argc, argv, &gArgs) == false) {
     EXIT_STATUS = EXIT_FAILURE;
     goto cleanup;
+  }
+
+  if (gArgs.size == 0) {
+    gArgs.files[0] = "-";
+    gArgs.size = 1;
   }
 
   if (readAndWrite(&gArgs) == false) {
