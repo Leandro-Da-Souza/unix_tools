@@ -38,6 +38,10 @@ bool parse(int argc, char *argv[], Arguments *gArgs) {
     return false;
   }
 
+  if (gArgs->size == 0) {
+    return false;
+  }
+
   return true;
 }
 
@@ -47,26 +51,31 @@ int main(int argc, char *argv[]) {
   if (argc < 2) {
     fp("Not enough arguments passed.\n");
     EXIT_STATUS = EXIT_FAILURE;
-    goto exit;
+    goto quit;
   }
 
   Arguments gArgs = {
       0, {false}, NULL, malloc((argc - 1) * sizeof *gArgs.files)};
+  char *line = NULL;
+  size_t memsize = 0;
+  ssize_t bytesread;
+
+  if (gArgs.files == NULL) {
+    EXIT_STATUS = EXIT_FAILURE;
+    goto quit;
+  }
 
   if (parse(argc, argv, &gArgs) == false) {
     EXIT_STATUS = EXIT_FAILURE;
-    goto exit;
+    goto cleanup_files;
   }
 
   FILE *fstream = fopen(*gArgs.files, "r");
-  char *line = NULL;
-  size_t memsize = 0;
-  size_t bytesread;
 
   if (fstream == NULL) {
     perror("File could not be opened.\n");
     EXIT_STATUS = EXIT_FAILURE;
-    goto exit;
+    goto cleanup_files;
   }
 
   while ((bytesread = getline(&line, &memsize, fstream)) != -1) {
@@ -76,13 +85,19 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  if (ferror(fstream)) {
+    perror("Failed to read file");
+    EXIT_STATUS = EXIT_FAILURE;
+  }
+
   if (fclose(fstream) != 0) {
     perror("File could not be closed");
     EXIT_STATUS = EXIT_FAILURE;
-    goto exit;
   }
-exit:
+
   free(line);
+cleanup_files:
   free(gArgs.files);
+quit:
   return EXIT_STATUS;
 }
