@@ -15,13 +15,15 @@ typedef struct {
 
 bool parse(int argc, char *argv[], Arguments *gArgs) {
   for (int i = 1; i < argc; i++) {
-    if (argv[i][0] == '-') {
-      if (strcmp(argv[i], "-i") == 0) {
-        gArgs->flags.CASE_INSENSITIVE = true;
-      } else if (strcmp(argv[i], "-n") == 0) {
-        gArgs->flags.LINE_NUMBERS = true;
-      } else {
-        return false;
+    if (argv[i][0] == '-' && argv[i][1] != '\0') {
+      for (int k = 1; argv[i][k] != '\0'; k++) {
+        if (argv[i][k] == 'i') {
+          gArgs->flags.CASE_INSENSITIVE = true;
+        } else if (argv[i][k] == 'n') {
+          gArgs->flags.LINE_NUMBERS = true;
+        } else {
+          return false;
+        }
       }
       continue;
     }
