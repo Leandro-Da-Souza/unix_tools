@@ -1,7 +1,4 @@
 #include "G_H.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #define MAX_CAPACITY 10
 
 int EXIT_STATUS = 0;
@@ -31,9 +28,8 @@ int main(int argc, char *argv[]) {
     goto exit;
   }
 
-  CircularBuffer cBuf = {MAX_CAPACITY, NULL};
+  CircularBuffer cBuf = {MAX_CAPACITY, {NULL}};
   size_t lineIndex = 0;
-  char *copy = NULL;
 
   while ((getline(&line, &mem, fStream)) != EOF) {
     // getline allocates one memory address to line, therefor we need to copy
@@ -57,8 +53,12 @@ int main(int argc, char *argv[]) {
     goto cleanup;
   }
 
-  for (int i = 0; i < MAX_CAPACITY; i++) {
-    p("%s\n", cBuf.items[i]);
+  size_t printCount = MAX_CAPACITY < lineIndex ? MAX_CAPACITY : lineIndex;
+  size_t start = lineIndex < cBuf.size ? 0 : lineIndex % cBuf.size;
+
+  for (size_t i = 0; i < printCount; i++) {
+    size_t index = (start + i) % cBuf.size;
+    p("%s", cBuf.items[index]);
   }
 
 cleanup:
